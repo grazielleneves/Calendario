@@ -17,7 +17,7 @@ const Login = () => {
         senha
       });
       localStorage.setItem('token', response.data.token);
-      navigate('/');
+      navigate('/calendar');
     } catch (error) {
         if (error.response) {
             // O servidor respondeu com um status fora do intervalo 2xx

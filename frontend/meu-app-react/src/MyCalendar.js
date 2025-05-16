@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; 
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import axios from 'axios';
@@ -14,9 +15,7 @@ const eventStyleGetter = (event, start, end, isSelected) => {
     border: '0px',
     display: 'block'
   };
-  return {
-    style: style
-  };
+  return { style };
 };
 
 const MyEvent = ({ event }) => (
@@ -40,7 +39,13 @@ const MyCalendar = () => {
     descricao: ''
   });
 
-  // Função para buscar eventos do servidor
+  const navigate = useNavigate(); // ✅ usado para logout
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    navigate('/login');
+  };
+
   useEffect(() => {
     const fetchEvents = async () => {
       try {
@@ -61,12 +66,11 @@ const MyCalendar = () => {
   }, []);
 
   const handleSelectSlot = ({ start, end }) => {
-    // Abrir modal para criar um novo evento
-    setCurrentEvent({ id: null, start, end, descricao: '' });
+    setCurrentEvent({ start, end, descricao: '' });
     setShowModal(true); 
   };
-  const handleSelect = ( event ) => {
-    // Abrir modal para editar um evento existente
+
+  const handleSelect = (event) => {
     setCurrentEvent({
       ...event,
       start: new Date(event.start),
@@ -74,6 +78,7 @@ const MyCalendar = () => {
     });
     setShowModal(true);
   };
+
   const handleCloseModal = () => {
     setCurrentEvent(null);
     setShowModal(false);
@@ -82,11 +87,9 @@ const MyCalendar = () => {
   const handleEventChange = (e) => {
     const { name, value } = e.target;
     setCurrentEvent(prev => {
-      // Se o campo alterado for 'start' ou 'end', converte para Date
       if (name === 'start' || name === 'end') {
         return { ...prev, [name]: new Date(value) };
       }
-      // Para outros campos, apenas atualiza o valor
       return { ...prev, [name]: value };
     });
   };
@@ -98,35 +101,34 @@ const MyCalendar = () => {
       hora_inicio: currentEvent.start.toISOString(),
       hora_termino: currentEvent.end.toISOString(),
     };
+
+    const isEditing = currentEvent.id != null;
+
     try {
-      const response = currentEvent.id
-      ? await axios.put(`http://localhost:5000/events/${currentEvent.id}`, eventToSubmit, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        })
-      : await axios.post('http://localhost:5000/events', eventToSubmit, {
+      if (isEditing) {
+        await axios.put(`http://localhost:5000/events/${currentEvent.id}`, eventToSubmit, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         });
-    
-      if (response.data) {
-        // Atualize o estado dos eventos aqui com a resposta do servidor
-        const newEvent = {
-          ...response.data,
-          start: new Date(response.data.hora_inicio || response.data.start),
-          end: new Date(response.data.hora_termino || response.data.end),
-        };
-        if (currentEvent.id) {
-          // Atualiza um evento existente
-          setEvents(prevEvents => prevEvents.map(evt => evt.id === currentEvent.id ? newEvent : evt));
-        } else {
-          // Adiciona um novo evento
-          setEvents(prevEvents => [...prevEvents, newEvent]);
-        }
       } else {
-      // Se não houver dados na resposta, significa que algo deu errado
-        console.error('Nenhum dado foi retornado pelo servidor');
+        await axios.post('http://localhost:5000/events', eventToSubmit, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        });
       }
+
+      const res = await axios.get('http://localhost:5000/events', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+
+      const formattedEvents = res.data.map(event => ({
+        ...event,
+        start: new Date(event.hora_inicio),
+        end: new Date(event.hora_termino),
+        title: event.descricao
+      }));
+
+      setEvents(formattedEvents);
       setShowModal(false);
-      setCurrentEvent(null); 
+      setCurrentEvent(null);
     } catch (error) {
       if (error.response && error.response.status === 400) {
         alert('Existe um conflito de horário com outro evento. Por favor, escolha um horário diferente.');
@@ -134,6 +136,7 @@ const MyCalendar = () => {
         console.error('Erro ao salvar o evento:', error.response ? error.response.data : error.message);
       }
     }
+
     handleCloseModal();
   };
 
@@ -149,26 +152,28 @@ const MyCalendar = () => {
     }
     handleCloseModal();
   };
+
   return (
     <div>
+      {/* ✅ Botão de logout */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px' }}>
+        <button onClick={handleLogout}>Sair</button>
+      </div>
+
       <Calendar
         localizer={localizer}
-        events={events.map(event =>{
-          console.log(event);
-          return{
-            ...event,
-            title: event.descricao,
-            start: new Date(event.start),
-            end: new Date(event.end),
-          };
-        })}
+        events={events.map(event => ({
+          ...event,
+          title: event.descricao
+        }))}
         selectable
         onSelectSlot={handleSelectSlot}
         onSelectEvent={handleSelect}
         eventPropGetter={eventStyleGetter}
         components={components}
-        style={{ height: '100vh' }}
+        style={{ height: '90vh' }}
       />
+
       {showModal && (
         <div className="modal">
           <form onSubmit={handleEventSubmit}>
@@ -206,3 +211,4 @@ const MyCalendar = () => {
 };
 
 export default MyCalendar;
+

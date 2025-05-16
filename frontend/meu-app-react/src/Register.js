@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom'; 
+import { useNavigate, Link } from 'react-router-dom'; 
 import './Register.css'; 
 
 const Register = () => {
@@ -23,6 +23,7 @@ const Register = () => {
       localStorage.setItem('token', response.data.token); 
       navigate('/login');
     } catch (error) {
+      alert('Usuário já existe.');
       setError(error.response?.data || 'Ocorreu um erro no registro');
     }
   };
@@ -54,8 +55,15 @@ const Register = () => {
         />
         <button type="submit">Cadastrar</button>
       </form>
+
+      <p>
+        Já tem uma conta?{' '}
+        <Link to="/login">Faça login aqui</Link>
+      </p>
     </div>
   );
 };
 
 export default Register;
+
+
