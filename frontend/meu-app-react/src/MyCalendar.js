@@ -39,7 +39,7 @@ const MyCalendar = () => {
     descricao: ''
   });
 
-  const navigate = useNavigate(); // ✅ usado para logout
+  const navigate = useNavigate(); 
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -155,9 +155,25 @@ const MyCalendar = () => {
 
   return (
     <div>
-      {/* ✅ Botão de logout */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px' }}>
-        <button onClick={handleLogout}>Sair</button>
+        <button
+          onClick={handleLogout}
+          style={{
+            backgroundColor: '#ff4d4d',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '10px 20px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+            transition: 'background-color 0.3s ease'
+          }}
+          onMouseOver={(e) => (e.target.style.backgroundColor = '#e60000')}
+          onMouseOut={(e) => (e.target.style.backgroundColor = '#ff4d4d')}
+        >
+          Sair
+        </button>
       </div>
 
       <Calendar
@@ -211,4 +227,3 @@ const MyCalendar = () => {
 };
 
 export default MyCalendar;
-

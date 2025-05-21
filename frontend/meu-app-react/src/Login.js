@@ -6,26 +6,48 @@ import './Login.css';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState(''); 
   const navigate = useNavigate();
 
   const handleSubmit = async (event) => {
-    event.preventDefault();
+    event.preventDefault(); 
+
+    setErrorMessage(''); 
     try {
       const response = await axios.post('http://localhost:5000/login', {
         email,
         senha
       });
+
       localStorage.setItem('token', response.data.token);
-      navigate('/calendar');
+      navigate('/calendar'); 
     } catch (error) {
-        if (error.response) {
-            // O servidor respondeu com um status fora do intervalo 2xx
-            setErrorMessage("Seu e-mail ou senha estão incorretos");
+      if (error.response) {
+        const { status, data } = error.response;
+
+        const backendMessage = (data.message || data.error || '').toLowerCase();
+
+        if (status === 401) { 
+          if (backendMessage.includes('usuário não encontrado') || backendMessage.includes('user not found')) {
+            setErrorMessage('Usuário não encontrado.');
+          } else if (backendMessage.includes('senha incorreta') || backendMessage.includes('incorrect password')) {
+            setErrorMessage('Senha incorreta.');
+          } else {
+            setErrorMessage('Usuário ou senha incorretos.');
+          }
+        } else if (status === 400) { 
+          setErrorMessage(backendMessage || 'Dados inválidos. Verifique seu e-mail e senha.');
+        } else if (status === 500) { 
+          setErrorMessage('Erro interno do servidor. Tente novamente mais tarde.');
         } else {
-            // Outros erros relacionados à rede ou configuração
-            setErrorMessage("Ocorreu um problema ao tentar fazer login");
+          setErrorMessage(`Erro no servidor: ${status} - ${backendMessage || 'Erro desconhecido.'}`);
         }
+      } else if (error.request) {
+        setErrorMessage('Não foi possível conectar ao servidor. Verifique sua conexão.');
+      } else {
+        setErrorMessage('Ocorreu um erro inesperado. Por favor, tente novamente.');
+      }
+      console.error('Erro no login:', error); // Para depuração no console do navegador
     }
   };
 

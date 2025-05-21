@@ -33,13 +33,6 @@ const Register = () => {
       <h2>Cadastro</h2>
       <form onSubmit={handleSubmit} className="register-form">
         <input
-          type="text"
-          value={nome}
-          onChange={(e) => setNome(e.target.value)}
-          placeholder="Digite o usuário"
-          required
-        />
-        <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
