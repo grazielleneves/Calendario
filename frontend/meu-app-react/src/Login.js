@@ -18,10 +18,10 @@ const Login = () => {
         email,
         senha
       });
-
       localStorage.setItem('token', response.data.token);
-      navigate('/calendar'); 
+      navigate('/calendar')
     } catch (error) {
+      console.error('Erro no login:', error);
       if (error.response) {
         const { status, data } = error.response;
 
@@ -47,7 +47,7 @@ const Login = () => {
       } else {
         setErrorMessage('Ocorreu um erro inesperado. Por favor, tente novamente.');
       }
-      console.error('Erro no login:', error); // Para depuração no console do navegador
+      console.error('Erro no login:', error);
     }
   };
 

@@ -43,7 +43,7 @@ const MyCalendar = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
-    navigate('/login');
+    navigate('/login'); 
   };
 
   useEffect(() => {
@@ -55,18 +55,31 @@ const MyCalendar = () => {
         const formattedEvents = response.data.map(event => ({
           ...event,
           start: new Date(event.hora_inicio),
-          end: new Date(event.hora_termino)
+          end: new Date(event.hora_termino),
+          title: event.descricao 
         }));
         setEvents(formattedEvents);
       } catch (error) {
         console.error('Falha ao buscar eventos.', error);
+        if (error.response) {
+          if (error.response.status === 401) {
+            alert('Sessão expirada ou não autorizada. Por favor, faça login novamente.');
+            handleLogout(); 
+          } else {
+            alert(`Erro do servidor ao buscar eventos: ${error.response.status} - ${error.response.data.message || 'Erro desconhecido'}`);
+          }
+        } else if (error.request) {
+          alert('Não foi possível conectar ao servidor para buscar eventos. Verifique sua conexão.');
+        } else {
+          alert('Ocorreu um erro inesperado ao configurar a requisição de eventos.');
+        }
       }
     };
     fetchEvents();
-  }, []);
+  }, [navigate]); 
 
   const handleSelectSlot = ({ start, end }) => {
-    setCurrentEvent({ start, end, descricao: '' });
+    setCurrentEvent({ start, end, descricao: '', id: null }); 
     setShowModal(true); 
   };
 
@@ -94,8 +107,38 @@ const MyCalendar = () => {
     });
   };
 
+  const checkOverlap = (newEventStart, newEventEnd, eventId = null) => {
+    for (let i = 0; i < events.length; i++) {
+      const existingEvent = events[i];
+      if (eventId && existingEvent.id === eventId) {
+        continue;
+      }
+
+      const existingStart = existingEvent.start;
+      const existingEnd = existingEvent.end;
+
+      if (
+        (newEventStart < existingEnd && newEventEnd > existingStart)
+      ) {
+        return true; 
+      }
+    }
+    return false; 
+  };
+
   const handleEventSubmit = async (e) => {
     e.preventDefault();
+    
+    if (currentEvent.start >= currentEvent.end) {
+        alert('A hora de início deve ser anterior à hora de término.');
+        return; 
+    }
+
+    if (checkOverlap(currentEvent.start, currentEvent.end, currentEvent.id)) {
+      alert('O evento se sobrepõe a um evento existente. Por favor, escolha um horário diferente.');
+      return; 
+    }
+
     const eventToSubmit = {
       descricao: currentEvent.descricao,
       hora_inicio: currentEvent.start.toISOString(),
@@ -109,10 +152,12 @@ const MyCalendar = () => {
         await axios.put(`http://localhost:5000/events/${currentEvent.id}`, eventToSubmit, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         });
+        alert('Evento atualizado com sucesso!'); 
       } else {
         await axios.post('http://localhost:5000/events', eventToSubmit, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         });
+        alert('Evento criado com sucesso!'); 
       }
 
       const res = await axios.get('http://localhost:5000/events', {
@@ -126,18 +171,28 @@ const MyCalendar = () => {
         title: event.descricao
       }));
 
-      setEvents(formattedEvents);
-      setShowModal(false);
-      setCurrentEvent(null);
+      setEvents(formattedEvents); 
+      setShowModal(false); 
+      setCurrentEvent(null); 
     } catch (error) {
-      if (error.response && error.response.status === 400) {
-        alert('Existe um conflito de horário com outro evento. Por favor, escolha um horário diferente.');
+      console.error('Erro ao salvar o evento:', error); 
+      if (error.response) {
+        if (error.response.status === 400) {
+          alert(error.response.data.message || 'Existe um conflito de horário ou dados inválidos. Por favor, escolha um horário diferente.');
+        } else if (error.response.status === 401) {
+            alert('Sessão expirada ou não autorizada. Por favor, faça login novamente.');
+            handleLogout(); 
+        } else {
+          alert(`Erro do servidor ao salvar evento: ${error.response.status} - ${error.response.data.message || 'Erro desconhecido.'}`);
+        }
+      } else if (error.request) {
+        alert('Não foi possível conectar ao servidor para salvar o evento. Verifique sua conexão.');
       } else {
-        console.error('Erro ao salvar o evento:', error.response ? error.response.data : error.message);
+        alert('Ocorreu um erro inesperado ao salvar o evento. Por favor, tente novamente.');
       }
     }
 
-    handleCloseModal();
+    handleCloseModal(); 
   };
 
   const handleEventDelete = async () => {
@@ -146,9 +201,23 @@ const MyCalendar = () => {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       setShowModal(false);
-      setEvents(prevEvents => prevEvents.filter(evt => evt.id !== currentEvent.id));
+      setEvents(prevEvents => prevEvents.filter(evt => evt.id !== currentEvent.id)); 
+      alert('Evento deletado com sucesso!'); 
     } catch (error) {
-      console.error(error);
+      console.error('Erro ao deletar o evento:', error); 
+      if (error.response) {
+        if (error.response.status === 401) {
+          alert('Sessão expirada ou não autorizada. Por favor, faça login novamente.');
+          handleLogout(); 
+
+        } else {
+          alert(`Erro do servidor ao deletar evento: ${error.response.status} - ${error.response.data.message || 'Erro desconhecido.'}`);
+        }
+      } else if (error.request) {
+        alert('Não foi possível conectar ao servidor para deletar o evento. Verifique sua conexão.');
+      } else {
+        alert('Ocorreu um erro inesperado ao deletar o evento. Por favor, tente novamente.');
+      }
     }
     handleCloseModal();
   };
@@ -199,6 +268,7 @@ const MyCalendar = () => {
               name="descricao"
               value={currentEvent.descricao || ''}
               onChange={handleEventChange}
+              required 
             />
             <label htmlFor="start">Início:</label>
             <input
@@ -206,6 +276,7 @@ const MyCalendar = () => {
               name="start"
               value={(currentEvent.start instanceof Date) ? currentEvent.start.toISOString().slice(0, 16) : ''}
               onChange={handleEventChange}
+              required 
             />
             <label htmlFor="end">Fim:</label>
             <input
@@ -213,9 +284,10 @@ const MyCalendar = () => {
               name="end"
               value={(currentEvent.end instanceof Date) ? currentEvent.end.toISOString().slice(0, 16) : ''}
               onChange={handleEventChange}
+              required 
             />
             <button type="submit">Salvar</button>
-            {currentEvent.id && (
+            {currentEvent.id && ( 
               <button type="button" onClick={handleEventDelete}>Deletar</button>
             )}
             <button type="button" onClick={handleCloseModal}>Cancelar</button>

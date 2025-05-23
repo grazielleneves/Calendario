@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const pool = require('./database'); // Importe a configuração de 'database.js'
+const pool = require('./database'); 
 
 const initDb = async () => {
   const sql = fs.readFileSync(path.join(__dirname, 'database/schema.sql'), 'utf8');
